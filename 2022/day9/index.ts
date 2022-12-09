@@ -7,13 +7,12 @@ enum Axis {
 
 type Direction = 'R'|'U'|'L'|'D'
 
-class Bridge {
-  head: [number, number] = [0, 0]
-  tail: [number, number] = [0, 0]
+class Knot {
+  position: [number, number] = [0, 0]
 
-  locationsVisitedByTail = new Set<string>()
+  locationsVisited = new Set<string>(['0,0'])
 
-  constructor() {}
+  constructor(public nextKnot?: Knot) {}
 
   directionMap = {
     'R': {
@@ -34,55 +33,119 @@ class Bridge {
     },
   }
 
-  moveHead(direction: Direction, distance: number) {
+  moveInDirection(direction: Direction, distance: number) {
     for (let i = 0; i<distance; i++) {
       const {axis, speed} = this.directionMap[direction]
-      this.head[axis] += speed
+      this.position[axis] += speed
 
-      this.moveTail()
+      this.locationsVisited.add(this.position.join(','))
+      this.moveNextKnot()
     }
   }
 
-  private areEndsWithinDistance(distance: number, axis: Axis) {
-    return Math.abs(this.head[axis] - this.tail[axis]) === distance
+  moveTo(newPosition: [number, number]) {
+    this.position = newPosition
+
+    this.locationsVisited.add(this.position.join(','))
+    this.moveNextKnot()
   }
 
-  private moveTailTowardsHead(axis: Axis) {
-    this.tail[axis] = (this.head[axis] + this.tail[axis]) / 2
-  }
-
-  private moveTail() {
-    if (this.areEndsWithinDistance(0, Axis.HORIZONTAL) && this.areEndsWithinDistance(2, Axis.VERTICAL)) {
-      this.moveTailTowardsHead(Axis.VERTICAL)
-    } else if (this.areEndsWithinDistance(0, Axis.VERTICAL) && this.areEndsWithinDistance(2, Axis.HORIZONTAL)) {
-      this.moveTailTowardsHead(Axis.HORIZONTAL)
-    } else if (this.areEndsWithinDistance(2, Axis.VERTICAL) && this.areEndsWithinDistance(1, Axis.HORIZONTAL)) {
-      this.tail[Axis.HORIZONTAL] = this.head[Axis.HORIZONTAL]
-      this.moveTailTowardsHead(Axis.VERTICAL)
-    } else if (this.areEndsWithinDistance(2, Axis.HORIZONTAL) && this.areEndsWithinDistance(1, Axis.VERTICAL)) {
-      this.tail[Axis.VERTICAL] = this.head[Axis.VERTICAL]
-      this.moveTailTowardsHead(Axis.HORIZONTAL)
+  private areKnotsWithinDistance(distance: number, axis: Axis) {
+    if (!this.nextKnot) {
+      throw 'no next knot'
     }
 
+    return Math.abs(this.position[axis] - this.nextKnot.position[axis]) === distance
+  }
 
-    this.locationsVisitedByTail.add(this.tail.join(','))
+  private moveNextKnotInOneAxis(axis: Axis) {
+    if (!this.nextKnot) {
+      throw 'no next knot'
+    }
+
+    const newPosition = [...this.nextKnot.position] as [number, number]
+    newPosition[axis] = (this.position[axis] + newPosition[axis]) / 2
+
+    this.nextKnot.moveTo(newPosition)
+  }
+
+  private moveNextKnotSemiDiagonally(primaryAxis: Axis) {
+    if (!this.nextKnot) {
+      throw 'no next knot'
+    }
+
+    const secondaryAxis = primaryAxis === Axis.VERTICAL ?
+      Axis.HORIZONTAL :
+      Axis.VERTICAL
+
+    const newPosition = [...this.nextKnot.position] as [number, number]
+    newPosition[primaryAxis] = (this.position[primaryAxis] + newPosition[primaryAxis]) / 2
+    newPosition[secondaryAxis] = this.position[secondaryAxis]
+
+    this.nextKnot.moveTo(newPosition)
+  }
+
+  private moveNextKnotDiagonally() {
+    if (!this.nextKnot) {
+      throw 'no next knot'
+    }
+
+    const newPosition = [...this.nextKnot.position] as [number, number]
+    newPosition[Axis.VERTICAL] = (this.position[Axis.VERTICAL] + newPosition[Axis.VERTICAL]) / 2
+    newPosition[Axis.HORIZONTAL] = (this.position[Axis.HORIZONTAL] + newPosition[Axis.HORIZONTAL]) / 2
+
+    this.nextKnot.moveTo(newPosition)
+  }
+
+  private moveNextKnot() {
+    if (!this.nextKnot) {
+      return
+    }
+
+    if (this.areKnotsWithinDistance(0, Axis.HORIZONTAL) && this.areKnotsWithinDistance(2, Axis.VERTICAL)) {
+      this.moveNextKnotInOneAxis(Axis.VERTICAL)
+    } else if (this.areKnotsWithinDistance(0, Axis.VERTICAL) && this.areKnotsWithinDistance(2, Axis.HORIZONTAL)) {
+      this.moveNextKnotInOneAxis(Axis.HORIZONTAL)
+    } else if (this.areKnotsWithinDistance(2, Axis.VERTICAL) && this.areKnotsWithinDistance(1, Axis.HORIZONTAL)) {
+      this.moveNextKnotSemiDiagonally(Axis.VERTICAL)
+    } else if (this.areKnotsWithinDistance(2, Axis.HORIZONTAL) && this.areKnotsWithinDistance(1, Axis.VERTICAL)) {
+      this.moveNextKnotSemiDiagonally(Axis.HORIZONTAL)
+    } else if (this.areKnotsWithinDistance(2, Axis.HORIZONTAL) && this.areKnotsWithinDistance(2, Axis.VERTICAL)) {
+      this.moveNextKnotDiagonally()
+    }
   }
 }
 
-function parseInput(input: string) {
-  const bridge = new Bridge()
-
+function readInput(input: string, head: Knot) {
   input.split('\n').forEach(line => {
     const [direction, distance] = line.split(' ') as [Direction, string]
 
-    bridge.moveHead(direction, parseInt(distance))
+    head.moveInDirection(direction, parseInt(distance))
   })
-
-  console.log([...bridge.locationsVisitedByTail])
-  console.log(bridge.locationsVisitedByTail.size)
 }
 
-// parseInput(`R 4
+function solve1(input: string) {
+  const tail = new Knot()
+  const head = new Knot(tail)
+
+  readInput(input, head)
+
+  console.log(tail.locationsVisited.size)
+}
+
+function solve2(input: string) {
+  const tail = new Knot()
+  let head = tail
+  for (let i = 8; i >= 0; i--) {
+    head = new Knot(head)
+  }
+
+  readInput(input, head)
+
+  console.log(tail.locationsVisited.size)
+}
+
+// solve1(`R 4
 // U 4
 // L 3
 // D 1
@@ -91,4 +154,15 @@ function parseInput(input: string) {
 // L 5
 // R 2`)
 
-parseInput(readFileSync('./input.txt', {encoding: 'utf-8'}))
+solve1(readFileSync('./input.txt', {encoding: 'utf-8'}))
+
+// solve2(`R 5
+// U 8
+// L 8
+// D 3
+// R 17
+// D 10
+// L 25
+// U 20`)
+
+solve2(readFileSync('./input.txt', {encoding: 'utf-8'}))
