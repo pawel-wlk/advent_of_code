@@ -93,41 +93,55 @@ class Monkey {
   }
 }
 
-function parseMonkeys(input: string, divideWorryLevel = true) {
-  return input.split('\n\n').map(code => Monkey.fromString(code, divideWorryLevel))
-}
+class MonkeyManager {
+  private monkeys: Monkey[] = []
+  constructor(
+    private divideWorryLevel: boolean,
+    private rounds: number
+  ) {}
 
-function simulateMonkeys(monkeys: Monkey[], rounds=20, manageLevels = false) {
-  const monkeyMap = new Map(monkeys.map(monkey => [monkey.monkeyId, monkey]))
-  const divisor = monkeys.map(monkey => monkey.divisor).reduce((a,b) => a*b, 1) 
+  readMonkeys(input: string) {
+    this.monkeys = input.split('\n\n').map(code => Monkey.fromString(code, this.divideWorryLevel))
+    return this
+  }
 
-  for (let i = 0; i<rounds; i++) {
-    for (const monkey of monkeys) {
-      for (const {newItem, monkeyId} of monkey.processItems()) {
-        monkeyMap.get(monkeyId)?.catchItem(manageLevels ? newItem % divisor : newItem)
+  simulateMonkeys() {
+    const monkeyMap = new Map(this.monkeys.map(monkey => [monkey.monkeyId, monkey]))
+    const divisor = this.monkeys.map(monkey => monkey.divisor).reduce((a,b) => a*b, 1) 
+
+    for (let i = 0; i<this.rounds; i++) {
+      for (const monkey of this.monkeys) {
+        for (const {newItem, monkeyId} of monkey.processItems()) {
+          monkeyMap.get(monkeyId)?.catchItem(this.divideWorryLevel ? newItem : newItem % divisor)
+        }
       }
     }
+
+    return this
+  }
+
+  calculateMonkeyBusiness() {
+    const [first, second] = this.monkeys.map(monkey => monkey.inspectCount).sort((a,b) => b-a)
+
+    return first * second
   }
 }
 
-function calculateMonkeyBusiness(monkeys: Monkey[]) {
-  const [first, second] = monkeys.map(monkey => monkey.inspectCount).sort((a,b) => b-a)
-
-  return first * second
-}
 
 function solve1(input: string) {
-  const monkeys = parseMonkeys(input)
-  simulateMonkeys(monkeys)
+  const manager = new MonkeyManager(true, 20)
+  manager.readMonkeys(input)
+  manager.simulateMonkeys()
 
-  console.log(calculateMonkeyBusiness(monkeys))
+  console.log(manager.calculateMonkeyBusiness())
 }
 
 function solve2(input: string) {
-  const monkeys = parseMonkeys(input, false)
-  simulateMonkeys(monkeys, 10_000, true)
+  const manager = new MonkeyManager(false, 10_000)
+  manager.readMonkeys(input)
+  manager.simulateMonkeys()
 
-  console.log(calculateMonkeyBusiness(monkeys))
+  console.log(manager.calculateMonkeyBusiness())
 }
 
 solve1(readFileSync('./input.txt', {encoding: 'utf-8'}))
