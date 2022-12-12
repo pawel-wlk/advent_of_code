@@ -46,17 +46,71 @@ function countVisibleTrees(forest: number[][]) {
   return total
 }
 
+function findVisibilityRange(treeI: number, treeJ: number, forest: number[][]): number {
+  const tree = forest[treeI][treeJ]
+
+  let topRange = 0
+  for (let i=treeI-1; i>=0; i--) {
+    topRange++
+    if (forest[i][treeJ] >= tree) {
+      break
+    }
+  }
+
+  let bottomRange = 0
+  for (let i=treeI+1; i<forest.length; i++) {
+    bottomRange++
+    if (forest[i][treeJ] >= tree) {
+      break
+    }
+  }
+
+  let leftRange = 0
+  for (let j=treeJ-1; j>=0 && forest[treeI][j] < tree; j--) {
+    leftRange++
+    if (forest[treeI][j] >= tree) {
+      break
+    }
+  }
+
+  let rightRange = 0
+  for (let j=treeJ+1; j<forest[treeI].length; j++) {
+    rightRange++
+    if (forest[treeI][j] >= tree) {
+      break
+    }
+  }
+
+  return topRange * bottomRange * leftRange * rightRange
+}
+
+function findMaxVisibilityRange(forest: number[][]) {
+  let result = 0
+
+  forest.forEach((row, i) => {
+    row.forEach((_, j) => {
+      const range = findVisibilityRange(i, j, forest)
+      console.log(range)
+      result = Math.max(result, range)
+    })
+  })
+
+  return result
+}
+
 function parseForest(forest: string): number[][] {
   return forest.split('\n')
     .map(line => line.split('').map(c => parseInt(c)))
 }
 
-// const result = countVisibleTrees(parseForest(`30373
+// const result = findMaxVisibilityRange(parseForest(`30373
 // 25512
 // 65332
 // 33549
 // 35390`))
 
-const result = countVisibleTrees(parseForest(readFileSync('./input.txt', {encoding: 'utf-8'})))
+// const result = countVisibleTrees(parseForest(readFileSync('./input.txt', {encoding: 'utf-8'})))
+
+const result = findMaxVisibilityRange(parseForest(readFileSync('./input.txt', {encoding: 'utf-8'})))
 
 console.log(result)
