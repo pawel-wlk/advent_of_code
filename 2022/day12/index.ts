@@ -22,7 +22,7 @@ function findPoint(map: string[][], point = 'S'): [number, number] {
   return [-1, -1]
 }
 
-function findShortestPaths(map: string[][], [fromI, fromJ]: readonly [number, number]): number {
+function findShortestPaths(map: string[][], [fromI, fromJ]: readonly [number, number], goals: string[]): number {
   const visitedLocations: number[][] = Array.from({ length: map.length }).map(() => [])
   const queue = [[fromI, fromJ] as const]
   let current: typeof queue [number] |undefined
@@ -32,7 +32,7 @@ function findShortestPaths(map: string[][], [fromI, fromJ]: readonly [number, nu
   while (current = queue.shift()) {
     const [currentI, currentJ] = current
 
-    if (map[currentI][currentJ] === 'E') {
+    if (goals.includes(map[currentI][currentJ])) {
       return visitedLocations[currentI][currentJ]
     } 
 
@@ -49,7 +49,7 @@ function findShortestPaths(map: string[][], [fromI, fromJ]: readonly [number, nu
       ([i, j]) => i >= 0 && j >= 0 &&
         i < map.length && j < map[i].length &&
         visitedLocations[i][j] === undefined &&
-        getElevation(map[i][j]) - currentElevation <= 1
+        currentElevation - getElevation(map[i][j]) <= 1
     )
 
     viableNeighbors.forEach(([i, j]) => {
@@ -61,13 +61,11 @@ function findShortestPaths(map: string[][], [fromI, fromJ]: readonly [number, nu
   return Infinity
 }
 
-function solve1(input: string) {
+function solve(input: string) {
   const map = input.split('\n').map(line => [...line]) 
-  const shortestDistance = findShortestPaths(map, findPoint(map, 'S'))
 
-  // console.log(map)
-  // console.log(paths)
-  console.log(shortestDistance)
+  console.log(findShortestPaths(map, findPoint(map, 'E'), ['S']))
+  console.log(findShortestPaths(map, findPoint(map, 'E'), ['S', 'a']))
 }
 
-solve1(readFileSync('./input.txt', {encoding: 'utf-8'}))
+solve(readFileSync('./input.txt', {encoding: 'utf-8'}))
