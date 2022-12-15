@@ -27,7 +27,7 @@ function countImpossiblePositionsInRow(readings: SensorReading[], row: number) {
     }
   })
 
-  return positionsInRow
+  return positionsInRow.size
 }
 
 function parseInput(input: string): SensorReading[] {
@@ -46,22 +46,43 @@ function parseInput(input: string): SensorReading[] {
   .filter((x): x is SensorReading => !!x)
 }
 
-function maybeSolve2(readings: SensorReading[]) {
-  const searchSpaceSize = 4_000_000
+function calculateTuningFrequency(point: [number, number]) {
+  return point[0] * 4_000_000 + point[1]
+}
 
+function searchPerimetersForFreePoint(readings: SensorReading[]) {
+  const searchSpaceSize = 4_000_000
   const sensors = readings.map(reading => ({
     ...reading,
     radius: measureDistance(reading.sensor, reading.beacon)
   }))
 
-  for (let x = 0; x <= searchSpaceSize; x++) {
-    if (x%100 === 0) console.log(x)
-    for (let y = 0; y <= searchSpaceSize; y++) {
-      if (sensors.every(({sensor, radius}) => measureDistance(sensor, [x,y]) > radius)) {
-        return [x,y]
+  for (const {radius, sensor: [x,y]} of sensors) {
+    let xDist = radius + 1
+    let yDist = 0
+
+    while (xDist >= 0) {
+      const points = [
+        [x+xDist, y+yDist],
+        [x-xDist, y+yDist],
+        [x+xDist, y-yDist],
+        [x-xDist, y-yDist],
+      ] as Array<[number, number]>
+
+      const pointsInSearchSpace = points.filter(([a,b]) => a >= 0 && a <= searchSpaceSize && b >=0 && b <= searchSpaceSize)
+
+      for (const point of pointsInSearchSpace) {
+        if (sensors.every(({sensor, radius}) => measureDistance(sensor, point) > radius)) {
+          return point
+        }
       }
+
+      xDist--
+      yDist++
     }
   }
+
+  return [-1, -1] as [number, number]
 }
 
 const testInput = `Sensor at x=2, y=18: closest beacon is at x=-2, y=15
@@ -80,10 +101,10 @@ Sensor at x=14, y=3: closest beacon is at x=15, y=3
 Sensor at x=20, y=1: closest beacon is at x=15, y=3`
 
 
-console.log(countImpossiblePositionsInRow(parseInput(testInput), 10).size)
+console.log(countImpossiblePositionsInRow(parseInput(testInput), 10))
 
 const input = readFileSync('./input.txt', {encoding: 'utf-8'})
-console.log(countImpossiblePositionsInRow(parseInput(input), 2_000_000).size)
+console.log(countImpossiblePositionsInRow(parseInput(input), 2_000_000))
 
-console.log(maybeSolve2(parseInput(input)))
+console.log(calculateTuningFrequency(searchPerimetersForFreePoint(parseInput(input))))
 
