@@ -10,37 +10,75 @@ interface Valve {
 
 type Cave = Valve[]
 
-function traverseGraph(cave: Cave) {
-  const startingValve = cave.find(v => v.label === 'AA')!
+interface Memo {
+  [label: string]: {
+    [minutesRemaining: number]: {
+      totalFlow: number,
+      openValves: string[]
+    }
+  }
+}
 
-  const valvesStack = [{valve: startingValve, remainingMinutes: 30, openValves: [] as string[], flow: 0}]
-  let next: typeof valvesStack[number] | undefined
-  
-  let results: typeof valvesStack = []
+function sortGraph(cave: Cave) {
+  const sorted: Valve[] = []
 
-  while (next = valvesStack.shift()) {
-    const {valve, remainingMinutes, openValves, flow} = next
+  function dfs(label = 'AA') {
+    const prevLength = sorted.length
+    const vertex = cave.find(v => v.label === label)!
+    sorted.push(vertex)
 
-    if (remainingMinutes === 0) {
-      results.push(next)
-      continue
+    for (const n of vertex.neighbors) {
+      if (!sorted.find(v => v.label === n)) dfs(n)
     }
 
-    const hasOpenedValve = remainingMinutes >= 2 && !openValves.includes(valve.label)
+    if(prevLength === sorted.length) return
+  }
 
-    for (const neighbor of valve.neighbors) {
-      const newRemainingMinutes = remainingMinutes - (hasOpenedValve ? 2 : 1)
+  dfs()
 
-      valvesStack.push({
-        valve: cave.find(v => v.label === neighbor)!,
-        remainingMinutes: newRemainingMinutes,
-        openValves: [...openValves, ...(hasOpenedValve ? [valve.label] : [])],
-        flow: flow + (hasOpenedValve ? newRemainingMinutes * valve.flow : 0),
-      })
+  return sorted
+}
+
+function traverseGraph(cave: Cave) {
+  const memo: Memo = {
+    AA: {
+      30: {
+        totalFlow: 0,
+        openValves: []
+      }
+    }
+  }
+  const sortedValves = sortGraph(cave)
+
+  for (let i = 0; i<100; i++) {
+    for (const valve of cave) {
+      if (!memo[valve.label]) memo[valve.label] = {}
+      for (const [minutesRemaining, {totalFlow, openValves}] of Object.entries(memo[valve.label])) {
+        if (Number(minutesRemaining) === 1) {
+          continue
+        }
+        const newTime = Number(minutesRemaining) - 1
+        if ( !openValves.includes(valve.label)) {
+          memo[valve.label][newTime] = {
+            openValves: [...openValves, valve.label],
+            totalFlow: totalFlow + valve.flow * newTime
+          }
+        }
+        for (const neighbor of valve.neighbors) {
+          if (!memo[neighbor]) memo[neighbor] = {}
+
+          if (!memo[neighbor][newTime] || memo[neighbor][newTime].totalFlow < totalFlow) {
+            memo[neighbor][newTime] = {
+              totalFlow, openValves
+            }
+          }
+        }
+      }
     }
   }
 
-  return results.map(result => result.flow).reduce((a,b) => Math.max(a, b), 0)
+
+  return Object.values(memo).map(valveMemo => valveMemo[1]?.totalFlow).reduce((a,b) => Math.max(a,b))
 }
 
 function parseGraph(input: string): Cave {
