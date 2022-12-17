@@ -15,6 +15,7 @@ interface Memo {
     [minutesRemaining: number]: {
       totalFlow: number,
       openValves: string[]
+      predecessor?: string
     }
   }
 }
@@ -50,18 +51,20 @@ function traverseGraph(cave: Cave) {
   }
   const sortedValves = sortGraph(cave)
 
-  for (let i = 0; i<100; i++) {
+  for (let i = 0; i<1000; i++) {
     for (const valve of cave) {
       if (!memo[valve.label]) memo[valve.label] = {}
-      for (const [minutesRemaining, {totalFlow, openValves}] of Object.entries(memo[valve.label])) {
+      for (const [minutesRemaining, {totalFlow, openValves, predecessor}] of Object.entries(memo[valve.label])) {
         if (Number(minutesRemaining) === 1) {
           continue
         }
         const newTime = Number(minutesRemaining) - 1
-        if ( !openValves.includes(valve.label)) {
+        const newFlow = totalFlow + valve.flow * newTime
+        if ((!memo[valve.label][newTime] || memo[valve.label][newTime].totalFlow < newFlow) && !openValves.includes(valve.label)) {
           memo[valve.label][newTime] = {
             openValves: [...openValves, valve.label],
-            totalFlow: totalFlow + valve.flow * newTime
+            totalFlow: newFlow,
+            predecessor,
           }
         }
         for (const neighbor of valve.neighbors) {
@@ -69,7 +72,7 @@ function traverseGraph(cave: Cave) {
 
           if (!memo[neighbor][newTime] || memo[neighbor][newTime].totalFlow < totalFlow) {
             memo[neighbor][newTime] = {
-              totalFlow, openValves
+              totalFlow, openValves, predecessor: valve.label
             }
           }
         }
@@ -77,7 +80,7 @@ function traverseGraph(cave: Cave) {
     }
   }
 
-
+  // console.log(JSON.stringify(memo))
   return Object.values(memo).map(valveMemo => valveMemo[1]?.totalFlow).reduce((a,b) => Math.max(a,b))
 }
 
