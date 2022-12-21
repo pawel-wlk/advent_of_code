@@ -3,12 +3,12 @@ import { readFileSync } from "fs"
 type Shape = Array<readonly [number, number]>
 
 class Cave {
-  private gasIndex = 0
+  public gasIndex = 0
   private leftWall = 0
   private rightWall = 8
   private highestPoint = 0
   private fallenRocksObject: Record<number, Record<number, boolean|undefined>> = {}
-  private shapeIndex: 0|1|2|3|4 = 0
+  public shapeIndex: 0|1|2|3|4 = 0
   private floor = 0
   constructor(
     private gasPattern: string
@@ -18,26 +18,41 @@ class Cave {
     return this.highestPoint
   }
 
-  getGasMovement() {
+  getTopRowCoverage() {
+    return Array.from({ length: 7 }).map((_, i) => this.fallenRocksObject[i+1]?.[this.highestPoint])
+  }
+
+  isTopRowSufficientlyCovered() {
+    if (this.highestPoint === 0) return false
+    const coverage = this.getTopRowCoverage()
+
+    for (let i=0; i<coverage.length-3; i++) {
+      if (!coverage[i] && !coverage[i+1] && !coverage[i+2] && !coverage[i+3]) return false
+    }
+
+    return true
+  }
+
+  private getGasMovement() {
     const direction = this.gasPattern[this.gasIndex]
     this.gasIndex = (this.gasIndex + 1) % this.gasPattern.length
 
     return direction === '>' ? 1 : -1
   }
 
-  shapeIntersectsWithWall(shape: Shape) {
+  private shapeIntersectsWithWall(shape: Shape) {
     return shape.some(([x]) => x === this.leftWall || x === this.rightWall)
   }
 
-  shapeIntersectsWithBottom(shape: Shape) {
+  private shapeIntersectsWithBottom(shape: Shape) {
     return shape.some(([x, y]) => y === this.floor)
   }
 
-  shapeIntersectsWithRock(shape: Shape) {
+  private shapeIntersectsWithRock(shape: Shape) {
     return shape.some(([x, y]) => this.fallenRocksObject[x]?.[y])
   }
 
-  spawnShape() {
+  private spawnShape() {
     let shape: Shape
     const leftMostPoint = this.leftWall + 3
     const bottomPoint = this.highestPoint + 4
@@ -93,13 +108,11 @@ class Cave {
     return shape
   }
 
-  addToFallenRocks(shape: Shape) {
+  private addToFallenRocks(shape: Shape) {
     shape.forEach(([x, y]) => {
       if (!this.fallenRocksObject[x]) this.fallenRocksObject[x] = {}
       this.fallenRocksObject[x][y] = true
     })
-
-    if (this.fall)
 
     this.highestPoint = Math.max(
       this.highestPoint,
@@ -112,7 +125,6 @@ class Cave {
     let currentFallingShape: Shape = this.spawnShape()
 
     while (numberOfFallenRocks < maxFallenRocks) {
-      if (numberOfFallenRocks % 1_000_000 === 0) console.log(numberOfFallenRocks)
       const gasMovement = this.getGasMovement()
       const gasMovedShape = currentFallingShape.map(([x, y]) => [x+gasMovement, y] as const)
 
@@ -144,6 +156,39 @@ cave = new Cave(input)
 cave.simulateRocks(2022)
 console.log(cave.getHeight())
 
-cave = new Cave('>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>')
-cave.simulateRocks(1_000_000_000_000)
-console.log(cave.getHeight())
+function findOutRequiredCycleLen(input: string) {
+  const cave = new Cave(input)
+  let cyclesDone = 0
+  cave.simulateRocks(10)
+  cyclesDone += 10
+  const initialGasIndex = cave.gasIndex
+  do {
+    cave.simulateRocks(5)
+    cyclesDone += 5
+  } while (cave.gasIndex !== initialGasIndex) 
+
+  console.log('FOUND', cyclesDone)
+
+  return cyclesDone
+}
+
+function solve2(input: string) {
+  const target = 1000000000000
+  const len = findOutRequiredCycleLen(input)
+  const multiplier = Math.floor(target / len)
+  const remainder = target - (multiplier * len)
+
+  const cave = new Cave(input)
+
+  cave.simulateRocks(len)
+  const cycleHeight = cave.getHeight()
+
+  cave.simulateRocks(remainder)
+  const remainderHeight = cave.getHeight()
+
+  return (cycleHeight * multiplier) + remainderHeight
+}
+
+console.log('RESULTS')
+console.log(solve2('>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>'))
+console.log(solve2(input))
