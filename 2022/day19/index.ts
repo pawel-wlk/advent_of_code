@@ -46,6 +46,17 @@ const findMaxGeodes = memoize((state: FactoryState): number => {
     return state.resources.geode
   }
 
+  // const maxSpending = Object.fromEntries(
+  //   Object.entries(state.blueprints).map(([]))
+  // )
+  const maxSpending = {} as Record<ResourceName, number>
+
+  Object.values(state.blueprints).forEach((blueprint) => {
+    Object.entries(blueprint).forEach(([resourceName, amount]) => {
+      maxSpending[resourceName as ResourceName] = Math.max(maxSpending[resourceName as ResourceName] ?? 0, amount)
+    })
+  })
+
   const statesAfterBuildingARobot = Object.entries(state.blueprints)
     .map(([blueprintKey, blueprint]): FactoryState => {
       return {
@@ -61,6 +72,8 @@ const findMaxGeodes = memoize((state: FactoryState): number => {
         }
       }
     })
+    .filter(state => Object.values(state.resources).every(resource => resource >= 0))
+    .filter(state => Object.entries(state.robots).every(([resource, robots]) => resource === 'geode' || robots <= maxSpending[resource as ResourceName]))
 
   const stateWithoutBuildingARobot = {
     timeLeft: state.timeLeft - 1,
@@ -73,10 +86,10 @@ const findMaxGeodes = memoize((state: FactoryState): number => {
   }
 
 
-  return [...statesAfterBuildingARobot, stateWithoutBuildingARobot]
-    .filter(state => Object.values(state.resources).every(resource => resource >= 0))
-    .map(findMaxGeodes)
-    .reduce((a,b) => Math.max(a,b))
+  return statesAfterBuildingARobot.reduce(
+    (currentBest, state) => Math.max(currentBest, findMaxGeodes(state)),
+    findMaxGeodes(stateWithoutBuildingARobot)
+  )
 })
 
 console.log(findMaxGeodes({

@@ -15,12 +15,20 @@ class ElvesHive {
     E: ([x, y]) => [[x+1, y], [x+1, y-1], [x+1, y+1]], 
   }
 
+  private getAllNeighbors: (elf: readonly [number, number]) => Array<readonly [number, number]> = ([x, y]) => [
+    [x, y-1], [x, y+1], [x+1, y-1], [x+1, y], [x+1, y+1], [x-1, y-1], [x-1, y], [x-1, y+1]
+  ]
+
   private adjustDirections() {
     this.directionsQueue.push(this.directionsQueue.shift()!)
   }
 
   private makeMovePropositions() {
     return this.elves.map(elf => {
+      if (this.getAllNeighbors(elf).every(neighbor => !this.elves.find(isPointEqualTo(neighbor)))) {
+        return elf
+      }
+
       for (const direction of this.directionsQueue) {
         const neighbors = this.findNeighbors[direction](elf)
 
